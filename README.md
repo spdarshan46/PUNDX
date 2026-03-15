@@ -13,7 +13,7 @@ Frontend
 https://pundx.co.in
 
 Backend API  
-https://pund-management.onrender.com
+https://pund-management.onrender.com/admin
 
 ---
 
