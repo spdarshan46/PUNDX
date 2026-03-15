@@ -616,28 +616,36 @@ class PundLoansView(APIView):
 
         data = []
         for loan in Loan.objects.filter(pund=pund):
-            installments          = LoanInstallment.objects.filter(loan=loan)
+            installments = LoanInstallment.objects.filter(loan=loan)
+
             emi_paid, penalty_paid = _loan_installment_summary(installments)
-            total_paid            = emi_paid + penalty_paid
-            remaining             = loan.total_payable - emi_paid
-            progress              = float(emi_paid / loan.total_payable * 100) if loan.total_payable else 0
+
+            total_paid = emi_paid + penalty_paid
+
+            remaining = loan.total_payable - emi_paid
+
+            progress = float(emi_paid / loan.total_payable * 100) if loan.total_payable else 0
+
+            interest_amount = (
+                loan.principal_amount * loan.interest_percentage
+            ) / Decimal("100")
 
             data.append({
-                "loan_id":        loan.id,
-                "member":         loan.member.email,
-                "principal":      str(loan.principal_amount),
-                "remaining":      str(remaining),
-                "total_payable":  str(loan.total_payable),
-                "interest_amount": str((loan.principal_amount * loan.interest_percentage) / Decimal("100")),         
-                "paid_amount":    str(total_paid),
-                "emi_paid":       str(emi_paid),
+                "loan_id": loan.id,
+                "member": loan.member.email,
+                "principal": str(loan.principal_amount),
+                "remaining": str(remaining),
+                "total_payable": str(loan.total_payable),
+                "interest_amount": str(interest_amount),
+                "paid_amount": str(total_paid),
+                "emi_paid": str(emi_paid),
                 "penalties_paid": str(penalty_paid),
-                "status":         loan.status,
-                "progress":       round(progress, 2),
+                "status": loan.status,
+                "progress": round(progress, 2),
             })
+
         return Response(data)
-
-
+    
 # ─── Summaries ──────────────────────────────────────────────
 
 class FundSummaryView(APIView):
