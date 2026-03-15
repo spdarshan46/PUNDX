@@ -628,7 +628,7 @@ class PundLoansView(APIView):
                 "principal":      str(loan.principal_amount),
                 "remaining":      str(remaining),
                 "total_payable":  str(loan.total_payable),
-                "interest_amount": str(loan.total_payable - loan.principal_amount),
+                "interest_amount": str((loan.principal_amount * loan.interest_percentage) / Decimal("100")),         
                 "paid_amount":    str(total_paid),
                 "emi_paid":       str(emi_paid),
                 "penalties_paid": str(penalty_paid),
@@ -644,67 +644,48 @@ class FundSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pund_id):
-        pund = Pund.objects.filter(id=pund_id).first()
+        pund = _get_pund(pund_id, active_only=False)
         if not pund:
             return Response({"error": "Pund not found"}, status=404)
-
-        is_member = Membership.objects.filter(
-            user=request.user,
-            pund=pund,
-            is_active=True
-        ).exists()
-
-        if not is_member:
+        if not _get_membership(request.user, pund):
             return Response({"error": "Not authorized"}, status=403)
 
-        # -------- TOTAL COLLECTED (SAVINGS + PENALTIES) --------
-        total_collected_data = Payment.objects.filter(
-            pund=pund,
-            is_paid=True,
-            payment_type="SAVING"
-        ).aggregate(
+        collected_agg = Payment.objects.filter(pund=pund, is_paid=True).aggregate(
             total_amount=models.Sum("amount"),
-            total_penalty=models.Sum("penalty_amount")
+            total_penalty=models.Sum("penalty_amount"),
         )
 
-        total_savings = total_collected_data["total_amount"] or Decimal("0")
-        total_penalties = total_collected_data["total_penalty"] or Decimal("0")
+        total_savings   = collected_agg["total_amount"]  or Decimal("0")
+        total_penalties = collected_agg["total_penalty"] or Decimal("0")
         total_collected = total_savings + total_penalties
 
-        # -------- ACTIVE LOANS --------
-        active_loans = Loan.objects.filter(
-            pund=pund,
-            is_active=True
-        )
+        active_loans = Loan.objects.filter(pund=pund, is_active=True)
 
         total_outstanding = active_loans.aggregate(
-            total=models.Sum("remaining_amount")
-        )["total"] or Decimal("0")
+            v=models.Sum("remaining_amount")
+        )["v"] or Decimal("0")
 
         total_principal = active_loans.aggregate(
-            total=models.Sum("principal_amount")
-        )["total"] or Decimal("0")
+            v=models.Sum("principal_amount")
+        )["v"] or Decimal("0")
 
-        total_payable = active_loans.aggregate(
-            total=models.Sum("total_payable")
-        )["total"] or Decimal("0")
-
-        total_interest = total_payable - total_principal
-
-        # ✅ CORRECT AVAILABLE FUND CALCULATION
-        available = total_collected - total_outstanding
+        total_interest = active_loans.aggregate(
+            v=models.Sum(
+                models.F("principal_amount") * models.F("interest_percentage") / Decimal("100")
+            )
+        )["v"] or Decimal("0")
 
         return Response({
             "total_collected": str(total_collected),
             "total_savings": str(total_savings),
             "total_penalties": str(total_penalties),
-
             "active_loan_outstanding": str(total_outstanding),
             "active_loan_principal": str(total_principal),
             "active_loan_interest": str(total_interest),
-
-            "available_fund": str(available),
+            "available_fund": str(total_collected - total_outstanding),
         })
+
+
      
 class SavingSummaryView(APIView):
     permission_classes = [IsAuthenticated]
