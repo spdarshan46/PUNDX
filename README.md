@@ -10,7 +10,7 @@ This system is currently deployed and running in production.
 ## 🌐 Live Application
 
 Frontend  
-https://pundx.co.in
+[https://pundx.co.in](https://pundx.co.in/)
 
 Backend API  
 https://pund-management.onrender.com/admin
