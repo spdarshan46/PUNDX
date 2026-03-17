@@ -29,3 +29,4 @@ class LoanRequestSerializer(serializers.Serializer):
 
 class LoanApproveSerializer(serializers.Serializer):
     cycles = serializers.IntegerField(required=False)
+    approval_date = serializers.DateField(required=False)

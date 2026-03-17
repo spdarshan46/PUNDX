@@ -6,7 +6,7 @@ import {
   FiCheck, FiX, FiEye, FiChevronDown,
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
-import LoanModal        from './Modals/LoanModal';
+import LoanModal from './Modals/LoanModal';
 import InstallmentModal from './Modals/InstallmentModal';
 import api from '../../../services/api';
 
@@ -343,13 +343,13 @@ const fmt = (v) => {
 };
 
 const calcLoan = (loan) => {
-  const principal      = parseFloat(loan?.principal || loan?.principal_amount || 0);
-  const totalPayable   = parseFloat(loan?.total_payable || 0);
+  const principal = parseFloat(loan?.principal || loan?.principal_amount || 0);
+  const totalPayable = parseFloat(loan?.total_payable || 0);
   const interestAmount = parseFloat(loan?.interest_amount || (totalPayable - principal) || 0);
-  const paid           = parseFloat(loan?.paid_amount || 0);
-  let emiPaid          = parseFloat(loan?.emi_paid || 0);
+  const paid = parseFloat(loan?.paid_amount || 0);
+  let emiPaid = parseFloat(loan?.emi_paid || 0);
   if (emiPaid === 0 && loan?.remaining) emiPaid = totalPayable - parseFloat(loan.remaining);
-  let remaining        = parseFloat(loan?.remaining || 0);
+  let remaining = parseFloat(loan?.remaining || 0);
   if (remaining === 0) remaining = totalPayable - emiPaid;
   let progress = totalPayable > 0 ? Math.round((emiPaid / totalPayable) * 100) : 0;
   progress = Math.max(0, Math.min(100, progress));
@@ -358,19 +358,19 @@ const calcLoan = (loan) => {
 
 const statusCls = (s = '') => {
   const v = s.toLowerCase();
-  if (v === 'pending')  return 'pending';
+  if (v === 'pending') return 'pending';
   if (v === 'approved') return 'approved';
-  if (v === 'active')   return 'active';
-  if (v === 'closed')   return 'closed';
+  if (v === 'active') return 'active';
+  if (v === 'closed') return 'closed';
   if (v === 'rejected') return 'rejected';
   return 'closed';
 };
 
 const SECTION_DEFS = {
-  pending:  { ico: FiClock,       icoCls: 'amber', countCls: 'amber', title: 'Pending Loan Requests' },
-  active:   { ico: FiTrendingUp,  icoCls: 'green', countCls: 'green', title: 'Active Loans' },
-  closed:   { ico: FiCheckCircle, icoCls: 'gray',  countCls: 'gray',  title: 'Closed Loans' },
-  rejected: { ico: FiXCircle,     icoCls: 'red',   countCls: 'red',   title: 'Rejected Loans' },
+  pending: { ico: FiClock, icoCls: 'amber', countCls: 'amber', title: 'Pending Loan Requests' },
+  active: { ico: FiTrendingUp, icoCls: 'green', countCls: 'green', title: 'Active Loans' },
+  closed: { ico: FiCheckCircle, icoCls: 'gray', countCls: 'gray', title: 'Closed Loans' },
+  rejected: { ico: FiXCircle, icoCls: 'red', countCls: 'red', title: 'Rejected Loans' },
 };
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -379,22 +379,22 @@ const LoansTab = ({
   onApproveLoan, onMarkInstallment, onRequestLoan, onRejectLoan,
   approvingLoan = false, fundSummary: propFundSummary, onRefresh,
 }) => {
-  const [showLoanModal,          setShowLoanModal]          = useState(false);
-  const [showInstallmentModal,   setShowInstallmentModal]   = useState(false);
-  const [selectedLoan,           setSelectedLoan]           = useState(null);
-  const [installments,           setInstallments]           = useState([]);
-  const [loadingInstallments,    setLoadingInstallments]    = useState(false);
-  const [expandedLoan,           setExpandedLoan]           = useState(null);
-  const [showRejectModal,        setShowRejectModal]        = useState(false);
-  const [rejectLoanId,           setRejectLoanId]           = useState(null);
-  const [rejectReason,           setRejectReason]           = useState('');
-  const [loading,                setLoading]                = useState(false);
-  const [memberAvailableFund,    setMemberAvailableFund]    = useState(0);
-  const [fetchingFund,           setFetchingFund]           = useState(false);
-  const [markingPaid,            setMarkingPaid]            = useState(false);
+  const [showLoanModal, setShowLoanModal] = useState(false);
+  const [showInstallmentModal, setShowInstallmentModal] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState(null);
+  const [installments, setInstallments] = useState([]);
+  const [loadingInstallments, setLoadingInstallments] = useState(false);
+  const [expandedLoan, setExpandedLoan] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectLoanId, setRejectLoanId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [memberAvailableFund, setMemberAvailableFund] = useState(0);
+  const [fetchingFund, setFetchingFund] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
 
   const availableFund = propFundSummary?.available_fund || pundData?.fund_summary?.available_fund || 0;
-  const displayFund   = memberAvailableFund > 0 ? memberAvailableFund : availableFund;
+  const displayFund = memberAvailableFund > 0 ? memberAvailableFund : availableFund;
 
   useEffect(() => {
     if (role === 'MEMBER' && pundData?.pund_id) fetchAvailableFund();
@@ -406,7 +406,7 @@ const LoansTab = ({
     try {
       const r = await api.get(`/finance/pund/${pundData.pund_id}/fund-summary/`);
       if (r.data?.available_fund) setMemberAvailableFund(parseFloat(r.data.available_fund));
-    } catch {} finally { setFetchingFund(false); }
+    } catch { } finally { setFetchingFund(false); }
   };
 
   const handleViewInstallments = async (loan) => {
@@ -426,7 +426,8 @@ const LoansTab = ({
         setShowInstallmentModal(true);
         if (r.data.installments.length === 0) toast.info('No installments found');
       } else { toast.info('No installments found'); }
-    } catch { toast.error('Failed to load installments');
+    } catch {
+      toast.error('Failed to load installments');
     } finally { setLoadingInstallments(false); }
   };
 
@@ -446,17 +447,24 @@ const LoansTab = ({
           })));
       }
       if (onRefresh) onRefresh();
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed');
     } finally { setMarkingPaid(false); }
   };
 
   const handleApproveLoanClick = (loan) => {
     const loanId = loan?.loan_id || loan?.id;
-    if (!loanId) { toast.error('Invalid loan data'); return; }
-    const cycles = prompt('Enter number of cycles for repayment:', '6');
-    if (cycles && parseInt(cycles) > 0) onApproveLoan(loanId, parseInt(cycles));
-  };
 
+    const cycles = prompt("Enter number of cycles:", "6");
+    const approvalDate = prompt("Enter approval date (YYYY-MM-DD) or leave empty");
+
+    if (cycles) {
+      onApproveLoan(loanId, {
+        cycles: parseInt(cycles),
+        approval_date: approvalDate || null
+      });
+    }
+  };
   const handleRejectClick = (loan) => {
     setRejectLoanId(loan?.loan_id || loan?.id);
     setShowRejectModal(true);
@@ -473,24 +481,25 @@ const LoansTab = ({
         setShowRejectModal(false); setRejectReason(''); setRejectLoanId(null);
         if (onRefresh) await onRefresh();
       }
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to reject loan');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to reject loan');
     } finally { setLoading(false); }
   };
 
   if (!role) return (
     <>
       <Styles />
-      <div className="lt-wrap" style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 0', gap:10 }}>
-        <div className="lt-spin-dark" style={{ width:28, height:28, borderWidth:3 }} />
-        <span style={{ fontSize:13, color:'var(--t3)' }}>Loading loans…</span>
+      <div className="lt-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0', gap: 10 }}>
+        <div className="lt-spin-dark" style={{ width: 28, height: 28, borderWidth: 3 }} />
+        <span style={{ fontSize: 13, color: 'var(--t3)' }}>Loading loans…</span>
       </div>
     </>
   );
 
   /* ── Reusable section renderer ── */
   const LoanSection = ({ statusKey, filterFn, children }) => {
-    const def    = SECTION_DEFS[statusKey];
-    const count  = loans.filter(filterFn).length;
+    const def = SECTION_DEFS[statusKey];
+    const count = loans.filter(filterFn).length;
     if (statusKey === 'closed' && count === 0) return null;
     if (statusKey === 'rejected' && count === 0) return null;
     return (
@@ -550,10 +559,10 @@ const LoansTab = ({
         {/* Summary stats */}
         <div className="lt-stats">
           {[
-            { lbl: 'Total Loans',    val: loans.length,                                                                  cls: '' },
-            { lbl: 'Pending',        val: loans.filter(l => l?.status === 'PENDING').length,                             cls: 'amber' },
-            { lbl: 'Active',         val: loans.filter(l => l?.status === 'APPROVED' || l?.status === 'ACTIVE').length,  cls: 'green' },
-            { lbl: 'Available Fund', val: fmt(availableFund),                                                             cls: 'blue' },
+            { lbl: 'Total Loans', val: loans.length, cls: '' },
+            { lbl: 'Pending', val: loans.filter(l => l?.status === 'PENDING').length, cls: 'amber' },
+            { lbl: 'Active', val: loans.filter(l => l?.status === 'APPROVED' || l?.status === 'ACTIVE').length, cls: 'green' },
+            { lbl: 'Available Fund', val: fmt(availableFund), cls: 'blue' },
           ].map((s, i) => (
             <motion.div key={i} className="lt-stat"
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -575,7 +584,7 @@ const LoansTab = ({
           ) : (
             loans.filter(l => l?.status === 'PENDING').map((loan, idx) => {
               const memberName = loan?.member?.split('@')[0] || 'Unknown';
-              const principal  = parseFloat(loan?.principal || 0);
+              const principal = parseFloat(loan?.principal || 0);
               const insufficient = principal > availableFund;
               return (
                 <motion.div key={loan.loan_id} className="lt-loan-card pending"
@@ -643,8 +652,8 @@ const LoansTab = ({
           ) : (
             loans.filter(l => l?.status === 'APPROVED' || l?.status === 'ACTIVE').map((loan, idx) => {
               const memberName = loan?.member?.split('@')[0] || 'Unknown';
-              const sc         = statusCls(loan.status);
-              const isOpen     = expandedLoan === loan.loan_id;
+              const sc = statusCls(loan.status);
+              const isOpen = expandedLoan === loan.loan_id;
               return (
                 <motion.div key={loan.loan_id} className={`lt-loan-card ${sc}`}
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -666,14 +675,14 @@ const LoansTab = ({
                       >
                         <FiEye size={14} />
                       </button>
-                      <FiChevronDown size={14} style={{ color:'var(--t4)', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }} />
+                      <FiChevronDown size={14} style={{ color: 'var(--t4)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
                     </div>
                   </div>
                   <AnimatePresence>
                     {isOpen && (
                       <motion.div
-                        initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }}
-                        exit={{ opacity:0, height:0 }} transition={{ duration:.22 }}
+                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }} transition={{ duration: .22 }}
                       >
                         <LoanDetails loan={loan} />
                       </motion.div>
@@ -691,7 +700,7 @@ const LoansTab = ({
             const memberName = loan?.member?.split('@')[0] || 'Unknown';
             return (
               <div key={loan.loan_id} className="lt-loan-card closed">
-                <div className="lt-loan-hd closed" style={{ cursor:'default' }}>
+                <div className="lt-loan-hd closed" style={{ cursor: 'default' }}>
                   <div className="lt-loan-left">
                     <div className="lt-avatar gray">{memberName.charAt(0).toUpperCase()}</div>
                     <div>
@@ -715,9 +724,9 @@ const LoansTab = ({
             const memberName = loan?.member?.split('@')[0] || 'Unknown';
             return (
               <div key={loan.loan_id} className="lt-loan-card rejected">
-                <div className="lt-loan-hd rejected" style={{ cursor:'default' }}>
+                <div className="lt-loan-hd rejected" style={{ cursor: 'default' }}>
                   <div className="lt-loan-left">
-                    <div className="lt-avatar" style={{ background:'linear-gradient(135deg,#dc2626,#f87171)' }}>
+                    <div className="lt-avatar" style={{ background: 'linear-gradient(135deg,#dc2626,#f87171)' }}>
                       {memberName.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -739,13 +748,13 @@ const LoansTab = ({
         <AnimatePresence>
           {showRejectModal && (
             <motion.div className="lt-modal-overlay"
-              initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-              transition={{ duration:.18 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: .18 }}
               onClick={() => setShowRejectModal(false)}
             >
               <motion.div className="lt-modal"
-                initial={{ scale:.95, y:16 }} animate={{ scale:1, y:0 }}
-                exit={{ scale:.95, y:16 }} transition={{ duration:.2 }}
+                initial={{ scale: .95, y: 16 }} animate={{ scale: 1, y: 0 }}
+                exit={{ scale: .95, y: 16 }} transition={{ duration: .2 }}
                 onClick={e => e.stopPropagation()}
               >
                 <div className="lt-modal-title">Reject Loan Request</div>
@@ -793,12 +802,12 @@ const LoansTab = ({
         {/* Member stats */}
         <div className="lt-stats">
           <motion.div className="lt-stat"
-            initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:0 }}>
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
             <div className="lt-stat-lbl">My Total Loans</div>
             <div className="lt-stat-val">{myLoans.length}</div>
           </motion.div>
           <motion.div className="lt-stat"
-            initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:.06 }}>
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .06 }}>
             <div className="lt-stat-lbl">Active Loans</div>
             <div className="lt-stat-val green">
               {myLoans.filter(l => l?.status === 'ACTIVE' || l?.status === 'APPROVED').length}
@@ -838,13 +847,13 @@ const LoansTab = ({
               </div>
             ) : (
               myLoans.map((loan, idx) => {
-                const sc     = statusCls(loan?.status);
+                const sc = statusCls(loan?.status);
                 const isOpen = expandedLoan === (loan.loan_id || loan.id);
                 const isActive = loan?.status === 'ACTIVE' || loan?.status === 'APPROVED';
                 return (
                   <motion.div key={loan.loan_id || loan.id}
                     className={`lt-loan-card ${sc}`}
-                    initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.06, duration: 0.28 }}
                   >
                     <div className={`lt-loan-hd ${sc}`}
@@ -872,15 +881,15 @@ const LoansTab = ({
                             <FiEye size={14} />
                           </button>
                         )}
-                        <FiChevronDown size={14} style={{ color:'var(--t4)', transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }} />
+                        <FiChevronDown size={14} style={{ color: 'var(--t4)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
                       </div>
                     </div>
 
                     <AnimatePresence>
                       {isOpen && (
                         <motion.div
-                          initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }}
-                          exit={{ opacity:0, height:0 }} transition={{ duration:.22 }}
+                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }} transition={{ duration: .22 }}
                         >
                           {isActive
                             ? <LoanDetails loan={loan} />

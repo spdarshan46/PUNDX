@@ -1,5 +1,5 @@
 from decimal import Decimal, ROUND_HALF_UP
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db import models, transaction
 from django.utils import timezone
@@ -90,7 +90,6 @@ class SetStructureView(APIView):
             ]}
         )
         return Response({"message": "Structure saved successfully"})
-
 
 # ─── Cycle ──────────────────────────────────────────────────
 
@@ -302,7 +301,6 @@ class RequestLoanView(APIView):
         )
         return Response({"message": "Loan request submitted"})
 
-
 class ApproveLoanView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -328,9 +326,8 @@ class ApproveLoanView(APIView):
             member=loan.member,
             status__in=["APPROVED", "ACTIVE"]
         ).exclude(id=loan.id).exists():
-
             return Response(
-                {"error": "Member already has an active loan. Clear previous loan first."},
+                {"error": "Member already has an active loan"},
                 status=400
             )
 
@@ -341,28 +338,51 @@ class ApproveLoanView(APIView):
 
         today = timezone.now().date()
 
+        approval_date = serializer.validated_data.get(
+            "approval_date", today
+        )
+
+        # Get pund structure
         structure = PundStructure.objects.filter(
             pund=pund,
-            effective_from__lte=today
+            effective_from__lte=approval_date
         ).order_by("-effective_from").first()
 
         if not structure:
             return Response({"error": "Structure not found"}, status=400)
 
-        cycles = serializer.validated_data.get("cycles") or structure.default_loan_cycles
+        cycles = serializer.validated_data.get(
+            "cycles",
+            structure.default_loan_cycles
+        )
+
+        # Installment interval
+        delta = (
+            1 if pund.pund_type == "DAILY"
+            else 7 if pund.pund_type == "WEEKLY"
+            else 30
+        )
+
+        # Find next cycle after approval
+        cycle_date = structure.effective_from
+
+        while cycle_date <= approval_date:
+            cycle_date += timedelta(days=delta)
+
+        start_date = cycle_date
 
         # Fund availability check
-        collected_agg = Payment.objects.filter(
+        collected = Payment.objects.filter(
             pund=pund,
             is_paid=True
         ).aggregate(
-            total_amount=models.Sum("amount"),
-            total_penalty=models.Sum("penalty_amount")
+            total=models.Sum("amount"),
+            penalty=models.Sum("penalty_amount")
         )
 
         total_collected = (
-            (collected_agg["total_amount"] or Decimal("0")) +
-            (collected_agg["total_penalty"] or Decimal("0"))
+            (collected["total"] or Decimal("0")) +
+            (collected["penalty"] or Decimal("0"))
         )
 
         total_active_loans = Loan.objects.filter(
@@ -375,27 +395,27 @@ class ApproveLoanView(APIView):
         available_fund = total_collected - total_active_loans
 
         if loan.principal_amount > available_fund:
-            return Response({"error": "Insufficient fund in pund"}, status=400)
+            return Response({"error": "Insufficient fund"}, status=400)
 
-        # Calculate advance deducted interest
+        # Interest calculation
         interest = (
-            loan.principal_amount * structure.loan_interest_percentage
+            loan.principal_amount *
+            structure.loan_interest_percentage
         ) / Decimal("100")
 
-        # Money actually given to borrower
         amount_given = loan.principal_amount - interest
-
-        # Total payable stays same as ledger amount
         total_payable = loan.principal_amount
+
         emi = (total_payable / cycles).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP
         )
 
         # Update loan
         loan.interest_percentage = structure.loan_interest_percentage
         loan.total_payable = total_payable
-        loan.amount_given = amount_given   # NEW FIELD
-        loan.interest_amount = interest 
+        loan.amount_given = amount_given
+        loan.interest_amount = interest
         loan.total_cycles = cycles
         loan.remaining_amount = total_payable
         loan.status = "APPROVED"
@@ -404,21 +424,7 @@ class ApproveLoanView(APIView):
         loan.approved_at = timezone.now()
         loan.save()
 
-        # Send email after successful DB commit
-        member = loan.member
-        transaction.on_commit(
-            lambda: send_loan_approved_email(member, loan)
-        )
-
-        # Installment interval
-        delta = (
-            1 if pund.pund_type == "DAILY"
-            else 7 if pund.pund_type == "WEEKLY"
-            else 30
-        )
-
-        start_date = today + timedelta(days=delta)
-
+        # Create installments
         installments = [
             LoanInstallment(
                 loan=loan,
@@ -432,7 +438,12 @@ class ApproveLoanView(APIView):
 
         LoanInstallment.objects.bulk_create(installments)
 
-        # Audit log
+        # Send email
+        member = loan.member
+        transaction.on_commit(
+            lambda: send_loan_approved_email(member, loan)
+        )
+
         FinanceAuditLog.objects.create(
             pund=pund,
             user=request.user,
@@ -441,7 +452,6 @@ class ApproveLoanView(APIView):
         )
 
         return Response({"message": "Loan approved successfully"})
-   
     
 class RejectLoanView(APIView):
     permission_classes = [IsAuthenticated]
@@ -477,7 +487,6 @@ class RejectLoanView(APIView):
             description=f"Loan {loan.id} rejected. Reason: {reason}",
         )
         return Response({"message": "Loan rejected successfully"})
-
 
 class MarkLoanInstallmentPaidView(APIView):
     permission_classes = [IsAuthenticated]
@@ -573,7 +582,6 @@ class LoanDetailView(APIView):
             } for inst in LoanInstallment.objects.filter(loan=loan)],
         })
 
-
 class MyLoansView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -602,7 +610,6 @@ class MyLoansView(APIView):
                 "total_installments": installments.count(),
             })
         return Response(data)
-
 
 class PundLoansView(APIView):
     permission_classes = [IsAuthenticated]
@@ -693,8 +700,6 @@ class FundSummaryView(APIView):
             "available_fund": str(total_collected - total_outstanding),
         })
 
-
-     
 class SavingSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 

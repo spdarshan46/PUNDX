@@ -443,14 +443,17 @@ const PundDetail = () => {
     try { await handleRefetch(); toast.success('Loan rejected'); } catch (e) { console.error(e); }
   };
 
-  const handleApproveLoan = async (loanId, cycles) => {
+  const handleApproveLoan = async (loanId, data) => {
     setApprovingLoan(true);
     try {
-      await api.post(`/finance/loan/${loanId}/approve/`, { cycles });
-      toast.success('Loan approved'); await handleRefetch();
-    } catch {
-      toast.error('Failed to approve loan');
-    } finally { setApprovingLoan(false); }
+      await api.post(`/finance/loan/${loanId}/approve/`, data);
+      toast.success("Loan approved");
+      await handleRefetch();
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to approve loan");
+    } finally {
+      setApprovingLoan(false);
+    }
   };
 
   const handleMarkPayment = async (paymentId) => {
