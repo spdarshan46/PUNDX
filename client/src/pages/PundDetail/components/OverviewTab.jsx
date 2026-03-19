@@ -234,7 +234,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
 
   useEffect(() => {
     if (role === 'MEMBER' && !propFund && !propSaving) fetchSummaries();
-  }, [role, pundData?.pund_id]);
+  }, [role, pundData?.pund_id, propFund, propSaving]); // ✅ dependencies fixed
 
   useEffect(() => {
     setFundSummary(propFund);
@@ -261,7 +261,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
   const calculateFromCycles = async () => {
     try {
       const res = await api.get(`/finance/pund/${pundData.pund_id}/cycle-payments/`);
-      const cycles = res.data;
+      const cycles = res.data || [];  // ✅ safe guard
 
       let totalCollected = 0;
       let totalPenalties = 0;
@@ -273,12 +273,9 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
 
       cycles.forEach(c => {
         uCycles.add(c.cycle_number);
-
-        c.payments?.forEach(p => {
+        (c.payments || []).forEach(p => {
           uMembers.add(p.member_id);
-
           totalExpected += num(p.amount);
-
           if (p.is_paid) {
             totalCollected += num(p.amount) + num(p.penalty_amount);
             totalPaid += num(p.amount) + num(p.penalty_amount);
@@ -287,39 +284,44 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
         });
       });
 
-      // 🔥 FIXED LOAN LOGIC
       let activeLoanPrincipal = 0;
       let activeLoanOutstanding = 0;
-      let totalDisbursed = 0; // ✅ IMPORTANT
+      let activeLoanInterest = 0;      // ✅ new
+      let totalDisbursed = 0;
 
       try {
         const lr = await api.get(`/finance/pund/${pundData.pund_id}/loans/`);
-
         (lr.data || []).forEach(l => {
           if (l.status === 'ACTIVE' || l.status === 'APPROVED') {
-
             const principal = num(l.principal_amount || l.principal);
-            const interest = num(l.interest_amount ?? (principal * num(l.interest_percentage || 0) / 100));
-
+            const interest = num(
+              l.interest_amount ??
+              (principal * num(l.interest_percentage || 0) / 100)
+            );
             const disbursed = num(l.amount_given ?? (principal - interest));
 
             activeLoanPrincipal += principal;
             activeLoanOutstanding += num(l.remaining_amount || l.total_payable || 0);
+            activeLoanInterest += interest;      // ✅ accumulate interest
             totalDisbursed += disbursed;
           }
         });
-
       } catch (e) {
         console.log("Loan fetch failed");
       }
 
-      // ✅ FINAL FIX
-      const available = totalCollected - totalDisbursed;
+      // ✅ Fix unpaid: expected minus totalPaid (paid includes penalties)
+      const unpaidSavings = totalExpected - totalPaid;
+      // ✅ Savings-only collected (excluding penalties)
+      const savingsOnly = totalPaid - totalPenalties;
+      // ✅ Available = savings collected minus loan disbursed
+      const available = savingsOnly - totalDisbursed;
 
       setFundSummary({
         total_collected: String(totalCollected),
         active_loan_outstanding: String(activeLoanOutstanding),
         active_loan_principal: String(activeLoanPrincipal),
+        active_loan_interest: String(activeLoanInterest),   // ✅ added
         available_fund: String(available)
       });
 
@@ -328,7 +330,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
         total_members: uMembers.size,
         total_expected_savings: String(totalExpected),
         total_paid_savings: String(totalPaid),
-        total_unpaid_savings: String(totalExpected - (totalPaid - totalPenalties)),
+        total_unpaid_savings: String(unpaidSavings),        // ✅ fixed
         total_penalties_collected: String(totalPenalties)
       });
 
@@ -429,7 +431,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
                 <div className="ov-fund-label"><FiClock size={13} /> Available Fund</div>
                 <div className="ov-fund-val">{fmt(fundSummary.available_fund)}</div>
                 <div className="ov-fund-sub">
-                  Collected − Loan Disbursed
+                  Savings collected − Loan Disbursed
                 </div>
               </div>
             </div>
