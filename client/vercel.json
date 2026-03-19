@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "https://pundx.co.in/:path*",
+      "destination": "https://www.pundx.co.in/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
