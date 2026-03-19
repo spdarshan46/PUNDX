@@ -109,7 +109,7 @@ def send_invite_email(user, pund_name):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
 
-    activation_link = f"https://www.pundx.co.in/activate-account/{uid}/{token}/"
+    activation_link = f"https://www.pundx.co.in/activate-account?email={user.email}"
 
     content = f"""
     <p>Hello {user.email},</p>
