@@ -1,9 +1,9 @@
 {
   "redirects": [
     {
-      "source": "https://www.pundx.co.in/:path*",
+      "source": "/:path*",
       "destination": "https://www.pundx.co.in/:path*",
-      "permanent": true
+      "permanent": false
     }
   ],
   "rewrites": [
