@@ -660,20 +660,27 @@ class FundSummaryView(APIView):
 
     def get(self, request, pund_id):
         pund = _get_pund(pund_id, active_only=False)
+
         if not pund:
             return Response({"error": "Pund not found"}, status=404)
+
         if not _get_membership(request.user, pund):
             return Response({"error": "Not authorized"}, status=403)
 
-        collected_agg = Payment.objects.filter(pund=pund, is_paid=True).aggregate(
+        # ✅ Total collected
+        collected_agg = Payment.objects.filter(
+            pund=pund,
+            is_paid=True
+        ).aggregate(
             total_amount=models.Sum("amount"),
             total_penalty=models.Sum("penalty_amount"),
         )
 
-        total_savings   = collected_agg["total_amount"]  or Decimal("0")
+        total_savings   = collected_agg["total_amount"] or Decimal("0")
         total_penalties = collected_agg["total_penalty"] or Decimal("0")
         total_collected = total_savings + total_penalties
 
+        # ✅ Active loans
         active_loans = Loan.objects.filter(pund=pund, is_active=True)
 
         total_outstanding = active_loans.aggregate(
@@ -684,11 +691,17 @@ class FundSummaryView(APIView):
             v=models.Sum("principal_amount")
         )["v"] or Decimal("0")
 
+        # ✅ FIXED: interest
         total_interest = active_loans.aggregate(
-            v=models.Sum(
-                models.F("principal_amount") * models.F("interest_percentage") / Decimal("100")
-            )
+            v=models.Sum("interest_amount")
         )["v"] or Decimal("0")
+
+        # 🔥 MOST IMPORTANT FIX
+        total_disbursed = active_loans.aggregate(
+            v=models.Sum("amount_given")
+        )["v"] or Decimal("0")
+
+        available_fund = total_collected - total_disbursed
 
         return Response({
             "total_collected": str(total_collected),
@@ -697,7 +710,7 @@ class FundSummaryView(APIView):
             "active_loan_outstanding": str(total_outstanding),
             "active_loan_principal": str(total_principal),
             "active_loan_interest": str(total_interest),
-            "available_fund": str(total_collected - total_outstanding),
+            "available_fund": str(available_fund),  
         })
 
 class SavingSummaryView(APIView):

@@ -228,9 +228,9 @@ const num = (v) => parseFloat(v) || 0;
 
 /* ═══════════════════════════════════════════════════════════ */
 const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: propSaving, myFinancials }) => {
-  const [fundSummary,   setFundSummary]   = useState(propFund);
+  const [fundSummary, setFundSummary] = useState(propFund);
   const [savingSummary, setSavingSummary] = useState(propSaving);
-  const [loading,       setLoading]       = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (role === 'MEMBER' && !propFund && !propSaving) fetchSummaries();
@@ -252,8 +252,9 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
       try {
         const r = await api.get(`/finance/pund/${pundData.pund_id}/saving-summary/`);
         setSavingSummary(r.data);
-      } catch {}
-    } catch (e) { console.error(e);
+      } catch { }
+    } catch (e) {
+      console.error(e);
     } finally { setLoading(false); }
   };
 
@@ -261,33 +262,79 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
     try {
       const res = await api.get(`/finance/pund/${pundData.pund_id}/cycle-payments/`);
       const cycles = res.data;
-      let totalCollected=0, totalPenalties=0, totalExpected=0, totalPaid=0;
-      const uCycles=new Set(), uMembers=new Set();
+
+      let totalCollected = 0;
+      let totalPenalties = 0;
+      let totalExpected = 0;
+      let totalPaid = 0;
+
+      const uCycles = new Set();
+      const uMembers = new Set();
+
       cycles.forEach(c => {
         uCycles.add(c.cycle_number);
+
         c.payments?.forEach(p => {
           uMembers.add(p.member_id);
+
           totalExpected += num(p.amount);
+
           if (p.is_paid) {
             totalCollected += num(p.amount) + num(p.penalty_amount);
-            totalPaid      += num(p.amount) + num(p.penalty_amount);
+            totalPaid += num(p.amount) + num(p.penalty_amount);
             totalPenalties += num(p.penalty_amount);
           }
         });
       });
-      let activeLoanPrincipal=0, activeLoanOutstanding=0;
+
+      // 🔥 FIXED LOAN LOGIC
+      let activeLoanPrincipal = 0;
+      let activeLoanOutstanding = 0;
+      let totalDisbursed = 0; // ✅ IMPORTANT
+
       try {
         const lr = await api.get(`/finance/pund/${pundData.pund_id}/loans/`);
+
         (lr.data || []).forEach(l => {
-          if (l.is_active || l.status==='ACTIVE' || l.status==='APPROVED') {
-            activeLoanPrincipal    += num(l.principal_amount);
-            activeLoanOutstanding  += num(l.remaining_amount || l.total_payable || 0);
+          if (l.status === 'ACTIVE' || l.status === 'APPROVED') {
+
+            const principal = num(l.principal_amount || l.principal);
+            const interest = num(l.interest_amount || 0);
+
+            const disbursed = principal - interest;
+
+            activeLoanPrincipal += principal;
+            activeLoanOutstanding += num(l.remaining_amount || l.total_payable || 0);
+            totalDisbursed += disbursed; // ✅ KEY FIX
           }
         });
-      } catch {}
-      setFundSummary({ total_collected: String(totalCollected), active_loan_outstanding: String(activeLoanOutstanding), active_loan_principal: String(activeLoanPrincipal), available_fund: String(totalCollected - activeLoanPrincipal) });
-      setSavingSummary({ total_cycles: uCycles.size, total_members: uMembers.size, total_expected_savings: String(totalExpected), total_paid_savings: String(totalPaid), total_unpaid_savings: String(totalExpected - (totalPaid - totalPenalties)), total_penalties_collected: String(totalPenalties) });
-    } catch (e) { console.error(e); }
+
+      } catch (e) {
+        console.log("Loan fetch failed");
+      }
+
+      // ✅ FINAL FIX
+      const available = totalCollected - totalDisbursed;
+
+      setFundSummary({
+        total_collected: String(totalCollected),
+        active_loan_outstanding: String(activeLoanOutstanding),
+        active_loan_principal: String(activeLoanPrincipal),
+        available_fund: String(available)
+      });
+
+      setSavingSummary({
+        total_cycles: uCycles.size,
+        total_members: uMembers.size,
+        total_expected_savings: String(totalExpected),
+        total_paid_savings: String(totalPaid),
+        total_unpaid_savings: String(totalExpected - (totalPaid - totalPenalties)),
+        total_penalties_collected: String(totalPenalties)
+      });
+
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   /* ── Loading ── */
@@ -303,7 +350,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
     </>
   );
 
-  const loanStatus = (s='') => s.toLowerCase().includes('active') || s === 'APPROVED' || s === 'ACTIVE' ? 'active' : 'pending';
+  const loanStatus = (s = '') => s.toLowerCase().includes('active') || s === 'APPROVED' || s === 'ACTIVE' ? 'active' : 'pending';
 
   return (
     <>
@@ -314,7 +361,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
         {pundData?.structure && (
           <motion.div className="ov-card ov-section"
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.34, ease: [0.25,1,.35,1] }}
+            transition={{ duration: 0.34, ease: [0.25, 1, .35, 1] }}
           >
             <div className="ov-card-title">
               <div className="ov-card-title-ico" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>
@@ -325,10 +372,10 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
 
             <div className="ov-struct-grid">
               {[
-                { lbl: 'Saving Amount',   val: fmt(pundData.structure.saving_amount),             cls: '' },
-                { lbl: 'Interest Rate',   val: `${pundData.structure.loan_interest_percentage || 0}%`, cls: '' },
-                { lbl: 'Saving Penalty',  val: fmt(pundData.structure.missed_saving_penalty),      cls: 'red' },
-                { lbl: 'Loan Penalty',    val: fmt(pundData.structure.missed_loan_penalty),         cls: 'red' },
+                { lbl: 'Saving Amount', val: fmt(pundData.structure.saving_amount), cls: '' },
+                { lbl: 'Interest Rate', val: `${pundData.structure.loan_interest_percentage || 0}%`, cls: '' },
+                { lbl: 'Saving Penalty', val: fmt(pundData.structure.missed_saving_penalty), cls: 'red' },
+                { lbl: 'Loan Penalty', val: fmt(pundData.structure.missed_loan_penalty), cls: 'red' },
               ].map((c, i) => (
                 <div key={i} className="ov-struct-cell">
                   <div className="ov-struct-lbl">{c.lbl}</div>
@@ -349,7 +396,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
         {fundSummary && (
           <motion.div className="ov-section"
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.34, delay: 0.07, ease: [0.25,1,.35,1] }}
+            transition={{ duration: 0.34, delay: 0.07, ease: [0.25, 1, .35, 1] }}
           >
             <div className="ov-fund-grid">
               {/* Total Collected */}
@@ -379,7 +426,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
                 <div className="ov-fund-label"><FiClock size={13} /> Available Fund</div>
                 <div className="ov-fund-val">{fmt(fundSummary.available_fund)}</div>
                 <div className="ov-fund-sub">
-                  Collected − Outstanding Loans
+                  Collected − Disbursed Loans
                 </div>
               </div>
             </div>
@@ -390,7 +437,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
         {savingSummary && (
           <motion.div className="ov-card ov-section"
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.34, delay: 0.14, ease: [0.25,1,.35,1] }}
+            transition={{ duration: 0.34, delay: 0.14, ease: [0.25, 1, .35, 1] }}
           >
             <div className="ov-card-title">
               <div className="ov-card-title-ico" style={{ background: 'var(--green-l)', color: 'var(--green)' }}>
@@ -402,12 +449,12 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
             {/* 6-cell grid */}
             <div className="ov-saving-grid">
               {[
-                { lbl: 'Cycles',   val: savingSummary.total_cycles   || 0, cls: 'blue' },
-                { lbl: 'Members',  val: savingSummary.total_members  || 0, cls: '' },
+                { lbl: 'Cycles', val: savingSummary.total_cycles || 0, cls: 'blue' },
+                { lbl: 'Members', val: savingSummary.total_members || 0, cls: '' },
                 { lbl: 'Expected', val: fmt(savingSummary.total_expected_savings), cls: '' },
-                { lbl: 'Paid',     val: fmt(savingSummary.total_paid_savings),     cls: 'green' },
-                { lbl: 'Unpaid',   val: fmt(savingSummary.total_unpaid_savings),   cls: 'red' },
-                { lbl: 'Penalties',val: fmt(savingSummary.total_penalties_collected), cls: 'amber' },
+                { lbl: 'Paid', val: fmt(savingSummary.total_paid_savings), cls: 'green' },
+                { lbl: 'Unpaid', val: fmt(savingSummary.total_unpaid_savings), cls: 'red' },
+                { lbl: 'Penalties', val: fmt(savingSummary.total_penalties_collected), cls: 'amber' },
               ].map((c, i) => (
                 <div key={i} className="ov-saving-cell">
                   <div className="ov-saving-lbl">{c.lbl}</div>
@@ -441,7 +488,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
         {role === 'MEMBER' && myFinancials && (
           <motion.div className="ov-section"
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.34, delay: 0.21, ease: [0.25,1,.35,1] }}
+            transition={{ duration: 0.34, delay: 0.21, ease: [0.25, 1, .35, 1] }}
           >
 
             {/* My Savings */}
