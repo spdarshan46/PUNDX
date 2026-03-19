@@ -1,6 +1,8 @@
 import secrets
 from datetime import timedelta
-
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 from django.conf import settings
 from django.utils import timezone
 import resend
@@ -104,7 +106,10 @@ def send_invite_email(user, pund_name):
 
     subject = f"You've been added to {pund_name}"
 
-    activation_link = f"{settings.FRONTEND_URL}/activate-account?email={user.email}"
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+
+    activation_link = f"https://www.pundx.co.in/activate-account/{uid}/{token}/"
 
     content = f"""
     <p>Hello {user.email},</p>
@@ -132,7 +137,6 @@ def send_invite_email(user, pund_name):
     html_content = email_template("Group Invitation", content)
 
     send_html_email(subject, html_content, user.email)
-
 
 def send_loan_approved_email(user, loan):
 
