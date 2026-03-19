@@ -429,7 +429,7 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
                 <div className="ov-fund-label"><FiClock size={13} /> Available Fund</div>
                 <div className="ov-fund-val">{fmt(fundSummary.available_fund)}</div>
                 <div className="ov-fund-sub">
-                  collected − Loan Disbursed
+                  Collected − Loan Disbursed
                 </div>
               </div>
             </div>
