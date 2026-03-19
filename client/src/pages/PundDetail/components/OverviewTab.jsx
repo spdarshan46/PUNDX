@@ -299,13 +299,13 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
           if (l.status === 'ACTIVE' || l.status === 'APPROVED') {
 
             const principal = num(l.principal_amount || l.principal);
-            const interest = num(l.interest_amount || 0);
+            const interest = num(l.interest_amount ?? (principal * num(l.interest_percentage || 0) / 100));
 
-            const disbursed = principal - interest;
+            const disbursed = num(l.amount_given ?? (principal - interest));
 
             activeLoanPrincipal += principal;
             activeLoanOutstanding += num(l.remaining_amount || l.total_payable || 0);
-            totalDisbursed += disbursed; // ✅ KEY FIX
+            totalDisbursed += disbursed;
           }
         });
 
