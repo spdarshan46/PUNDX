@@ -405,8 +405,11 @@ const OverviewTab = ({ pundData, role, fundSummary: propFund, savingSummary: pro
                 <div className="ov-fund-val">{fmt(fundSummary.total_collected)}</div>
                 {savingSummary && (
                   <div className="ov-fund-sub">
-                    Savings: {fmt(num(fundSummary.total_collected) - num(savingSummary.total_penalties_collected))}
-                    &nbsp;·&nbsp;Penalties: {fmt(savingSummary.total_penalties_collected)}
+                    Savings: {fmt(num(savingSummary.total_paid_savings) - num(savingSummary.total_penalties_collected))}
+                    &nbsp;·&nbsp;
+                    EMI: {fmt(num(fundSummary.total_collected) - num(savingSummary.total_paid_savings))}
+                    &nbsp;·&nbsp;
+                    Penalties: {fmt(savingSummary.total_penalties_collected)}
                   </div>
                 )}
               </div>
